@@ -1,6 +1,6 @@
 /*
 	execute o programa passando os 3 argumentos necessários;
-	./programa <nome_arquivo_leitura> <tamanho_arquivo> <quantidade_io_cpu_burst>
+	./programa <nome_arquivo_leitura> <tamanho_arquivo> <quantidade_io_cpu_burst
 */
 
 #include <stdio.h>
@@ -9,17 +9,11 @@
 
 void setProcesses(FILE *file, void *p);
 void setProcess(void *p, char *ch, int attrIndex);
-char *setIn(char *input,int in_tam);
+char *setInput(char *buffer,int in_tam);
 
 typedef struct Process {
 		char name[10];
-		int priority;
-		int admission;
-		int id;
-		int *cpuBurst;
-		int *ioBurst;
-		int ioIndex; 
-		int cpuIndex;
+		int priority, admission, id, *cpuBurst, *ioBurst, ioIndex, cpuIndex;
 }Process;
 
 int main(int argc, char **argv){	
@@ -62,22 +56,22 @@ int main(int argc, char **argv){
 
 void setProcesses(FILE *file, void *proc){
 	Process *p = (struct Process *) proc;
-	int buffer = 15;
-	char input[buffer], *in, ch;
+	int TAM = 15;
+	char buffer[TAM], *input, ch;
 	int index = 0, processIndex = 0,attrIndex = 0;
 	ch = fgetc(file);
 	while(ch != EOF){
 		if(ch != '\t' && ch != '\n'){
-			input[index] = ch;
+			buffer[index] = ch;
 			index++;
 		} else if(ch == '\n'){
 			processIndex++;
 			attrIndex = 0;
 			index = 0;
 		} else {
-			in = setIn(input, index);
-			setProcess(&p[processIndex], in, attrIndex);
-			free(in);
+			input = setInput(buffer, index);
+			setProcess(&p[processIndex], input, attrIndex);
+			free(input);
 			attrIndex++;
 			index = 0;
 		}
@@ -112,15 +106,15 @@ void setProcess(void *proc, char *ch, int attrIndex) {
 	}
 }
 
-char *setIn(char *input,int in_tam)
+char *setInput(char *buffer,int in_tam)
 {
-	char *in = (char *) calloc(in_tam,sizeof(char));
+	char *input = (char *) calloc(in_tam,sizeof(char));
 	int i;
 	for (i = 0; i < in_tam; ++i)
 	{
-		*(in+i) = input[i];
+		*(input+i) = buffer[i];
 	}
-	return in;
+	return input;
 
 }
 
