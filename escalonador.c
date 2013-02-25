@@ -1,3 +1,8 @@
+/*
+	execute o programa passando os 3 argumentos necessários;
+	./programa <nome_arquivo_leitura> <tamanho_arquivo> <quantidade_io_cpu_burst>
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +37,11 @@ int main(int argc, char **argv){
 	}
 	setProcesses(file, processes);
 
+	/*
+		implementar codigo de escalonamento com preempção e aging
+	*/
+
+	// codigo abaixo só para mostrar que está lendo direito o arquivo de teste
 	for (i = 0; i < size; ++i)
 	{
 		printf("process name:%s\n",processes[i].name );
@@ -39,10 +49,12 @@ int main(int argc, char **argv){
 		printf("process admission : %d\n",processes[i].admission );
 		for (j = 0; j < BURST_TIMES; j++)
 		{
-			printf("cpu:%d\n",processes[i].cpuBurst[j] );
-			printf("io:%d\n",processes[i].ioBurst[j] );
+			printf("CPU :%d\n",processes[i].cpuBurst[j] );
+			printf("IO :%d\n",processes[i].ioBurst[j] );
 		}
+		printf("#################################################\n");
 	}
+	free(processes);
 
 	return 0;
 }
