@@ -7,44 +7,98 @@
 #include <stdlib.h>
 #include <string.h>
 
-void setProcesses(FILE *file, void *p);
-void setProcess(void *p, char *ch, int attrIndex);
-char *setInput(char *buffer,int in_tam);
+typedef struct Process Process;
+typedef struct list List;
+typedef struct listObj Obj;
+typedef struct scheduler Scheduler;
+typedef struct cpuBurst CpuBurst;
+typedef struct ioBurst IOBurst;
+typedef struct schedulerInfo SchedulerInfo;
 
-typedef struct Process {
+struct cpuBurst{
+	int burstTime;
+	CpuBurst *next;
+};
+
+struct ioBurst
+{
+	int burstTime;
+	IOBurst *next;
+};
+
+struct Process 
+{
 		char name[10];
-		int priority, admission, id, *cpuBurst, *ioBurst, ioIndex, cpuIndex;
-}Process;
+		int priority, admission, id;
+		CpuBurst *cpu_burst_init;
+		IOBurst *io_burst_init;
+};
+
+struct listObj {
+	Process *process;
+	Obj *next;
+	Obj *prev;
+};
+
+struct list {
+	Obj *first;
+};
+
+struct schedulerInfo{
+	int io_done, cpu_done;
+	char status;
+
+};
+
+struct scheduler
+{
+	SchedulerInfo info;
+	int processId;
+};
+
+
+void setProcesses(FILE *file, Process*);
+void setProcess(Process *, char *ch, int attrIndex, int);
+char *setInput(char *buffer,int in_tam);
+void schedulerStart(Process *);
+
 
 int main(int argc, char **argv){	
-	int BURST_TIMES = atoi(argv[3]);
-	int i,j,size = atoi(argv[2]);
+	int i,j,SIZE = atoi(argv[2]);
 	Process *processes;
-	processes = (Process *) malloc(sizeof(Process) * size);
+	processes = (Process *) malloc(sizeof(Process) * SIZE);
 	FILE *file;
 	file = fopen(argv[1], "r");
-	for(i = 0 ; i < size ; i++){
-		processes[i].ioBurst = (int *) malloc(sizeof(int)*BURST_TIMES);
-		processes[i].cpuBurst = (int *) malloc(sizeof(int)*BURST_TIMES);
-		processes[i].cpuIndex = 0;
-		processes[i].ioIndex = 0;
-	}
+
 	setProcesses(file, processes);
+	//schedulerStart(processes);
+
 
 	/*
 		implementar codigo de escalonamento com preempção e aging
 	*/
 
 	// codigo abaixo só para mostrar que está lendo direito o arquivo de teste
-	for (i = 0; i < size; ++i)
+	for (i = 0; i < SIZE; ++i)
 	{
+		printf("process Id: %d \n",processes[i].id);
 		printf("process name:%s\n",processes[i].name );
 		printf("priority:%d\n",processes[i].priority );
 		printf("process admission : %d\n",processes[i].admission );
-		for (j = 0; j < BURST_TIMES; j++)
-		{
-			printf("CPU :%d\n",processes[i].cpuBurst[j] );
-			printf("IO :%d\n",processes[i].ioBurst[j] );
+		IOBurst *io;
+		CpuBurst *cpu;
+		cpu = processes[i].cpu_burst_init;
+		io = processes[i].io_burst_init;
+		while(cpu || io){
+			if(cpu){
+				printf("cpu: %d \n", cpu->burstTime);
+				cpu = cpu->next;	
+			}
+			if(io){
+				printf("io:%d\n",io->burstTime);
+				io = io->next;
+			}
+				
 		}
 		printf("#################################################\n");
 	}
@@ -54,8 +108,7 @@ int main(int argc, char **argv){
 }
 
 
-void setProcesses(FILE *file, void *proc){
-	Process *p = (struct Process *) proc;
+void setProcesses(FILE *file, Process *processList){
 	int TAM = 15;
 	char buffer[TAM], *input, ch;
 	int index = 0, processIndex = 0,attrIndex = 0;
@@ -70,7 +123,7 @@ void setProcesses(FILE *file, void *proc){
 			index = 0;
 		} else {
 			input = setInput(buffer, index);
-			setProcess(&p[processIndex], input, attrIndex);
+			setProcess(&processList[processIndex], input, attrIndex, processIndex);
 			free(input);
 			attrIndex++;
 			index = 0;
@@ -81,11 +134,14 @@ void setProcesses(FILE *file, void *proc){
 	fclose(file);
 }  
 
-void setProcess(void *proc, char *ch, int attrIndex) {
-	struct Process *p = (struct Process *) proc;
+void setProcess(Process* p, char *ch, int attrIndex, int processIndex) {
+
 	switch(attrIndex){
 		case 0:
+			p->id = (processIndex+1);
 			p->admission = atoi(ch);
+			p->cpu_burst_init = NULL;
+			p->io_burst_init = NULL;
 			break;
 		case 1: 
 			strcpy(p->name, ch);
@@ -95,12 +151,34 @@ void setProcess(void *proc, char *ch, int attrIndex) {
 			break;
 		default:
 			if(attrIndex % 2 == 1){
-				p->cpuBurst[p->cpuIndex] = atoi(ch);
-				p->cpuIndex += 1;
+				CpuBurst *obj, *aux;
+				obj = (CpuBurst *) malloc(sizeof(CpuBurst));
+				obj->burstTime = atoi(ch);
+				obj->next = NULL;
+				if(p->cpu_burst_init == NULL){
+					p->cpu_burst_init = obj;
+				} else {
+					aux = p->cpu_burst_init;
+					while(aux->next != NULL)
+						aux = aux->next;
+					aux->next = obj;
+				}
+				//p->cpuBurst[p->cpuIndex] = 
+				//p->cpuIndex += 1;
 
 			} else {
-				p->ioBurst[p->ioIndex] = atoi(ch);
-				p->ioIndex += 1;
+				IOBurst *obj, *aux;
+				obj = (IOBurst *) malloc(sizeof(IOBurst));
+				obj->burstTime = atoi(ch);
+				obj->next = NULL;
+				if(p->io_burst_init == NULL){
+					p->io_burst_init = obj;
+				} else {
+					aux = p->io_burst_init;
+					while(aux->next != NULL)
+						aux = aux->next;
+					aux->next = obj;
+				}
 			}
 			break;
 	}
@@ -115,6 +193,15 @@ char *setInput(char *buffer,int in_tam)
 		*(input+i) = buffer[i];
 	}
 	return input;
+
+}
+
+void schedulerStart(Process *processes){
+	List *newQueue;
+	List *readyQueue;
+	List *waitQueue;
+	Scheduler scheduler;
+
 
 }
 
