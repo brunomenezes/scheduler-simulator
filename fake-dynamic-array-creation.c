@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#define IDLE_ON 1;
 typedef struct x Obj;
 typedef struct y List;
 
@@ -18,30 +18,24 @@ struct y
 	Obj *last;
 };
 
-void initList(List *);
 Obj* createNode(int number);
 void addToList(List *, int number);
 void displayList(List *);
 
 int main(){
-	List list;
-	initList(&list);
+	List *list;
+	list = (List*) calloc(1,sizeof(List));
 	int n,i ; 
 	printf("tamanho da lista : ");
 	scanf("%d", &n);
-
 	for(i=0 ; i < n ; i++){
-		addToList(&list,(i+1));
+		addToList(list,(i+1));
 	}
-	displayList(&list);
+	displayList(list);
 	return 0;
 	
 }
 
-void initList(List *l){
-	l->first = NULL;
-	l->last = NULL;
-}
 Obj* createNode(int number){
 	Obj *obj;
 	obj = (Obj *) malloc(sizeof(Obj));
@@ -55,12 +49,11 @@ Obj* createNode(int number){
 void addToList(List *l, int number){
 	Obj *obj = createNode(number);
 	Obj *aux;
-	if(l->first == NULL){
+	if(!l->first){
 		l->first = obj;
-		obj->prev = l->first;
 	} else {
 		aux = l->first;
-		while(aux->next != NULL)
+		while(aux->next)
 			aux = aux->next;
 		aux->next = obj;
 		obj->prev = aux;

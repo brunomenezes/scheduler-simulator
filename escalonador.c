@@ -10,7 +10,6 @@ typedef struct obj Obj;
 typedef struct processor Processor;
 typedef struct cpuBurst CpuBurst;
 typedef struct ioBurst IOBurst;
-typedef struct schedulerInfo SchedulerInfo;
 
 struct cpuBurst{
 	int burstTime;
@@ -41,20 +40,15 @@ struct list {
 	Obj *first;
 };
 
-struct schedulerInfo{
-	int processId;
-	CpuBurst *cpu_done;
-	IOBurst *io_done;
-	char status;
-
-};
-
 struct processor
 {
 	Process *executingProcess;
 	int currentCpuBurstOver;
 	int idle;	
 };
+
+long int totalAdmittedProcess = 0;
+
 
 
 void setProcesses(FILE *file, Process*);
@@ -64,7 +58,7 @@ void schedulerStart(Process *, int);
 int hasProcess(List *, List *, List *, Processor *);
 void setNewQueue(List *, Process *, int);
 void addOrderedByAdmission(List *, Obj *);
-void admitProcess(List *, List *, int );
+void admitProcess(List *, List *, long int );
 void scheduleProcess(Processor *, List*, List*);
 void addOrderedByPriority(List *, Obj *);
 void addToQueue(List *, Obj *);
@@ -184,8 +178,10 @@ void schedulerStart(Process *processes, int size){
 	processor = (Processor*) calloc(1,sizeof(Processor));
 	processor->idle = ON; //iniciando processador com idle on
 	processor->currentCpuBurstOver = OFF;
-	int adTime, agingTime = 10, currentTime = 0;
+	int agingTime = 10;
+	long int currentTime = 0;
 	setNewQueue(newQueue, processes, size);
+	
 	while(hasProcess(newQueue,readyQueue,waitQueue, processor)){
 		admitProcess(newQueue,readyQueue, currentTime);
 		scheduleProcess(processor, readyQueue, waitQueue);
@@ -193,12 +189,15 @@ void schedulerStart(Process *processes, int size){
 		execIO(waitQueue);
 		checkIOFinished(waitQueue,readyQueue);
 		if( currentTime % agingTime == 0 ){
+			printf("\nAplicando aging...\n");
 			aging(readyQueue);
 		}
 		preemptionCheck(processor,readyQueue);
 		displayQueueStatus(waitQueue, readyQueue);
 		currentTime++;
+		
 	}
+	printf("processos admitidos %ld\n", totalAdmittedProcess);
 	free(newQueue);
 	free(processor);
 	free(readyQueue);
@@ -219,6 +218,7 @@ void setNewQueue(List *n, Process *p, int size){
 		Obj *obj;
 		obj = (Obj*) calloc(1,sizeof(Obj));
 		obj->process = &p[i];
+		printf("priority %d \n",obj->process->priority);
 		addOrderedByAdmission(n,obj);
 	}
 }
@@ -248,11 +248,12 @@ void addOrderedByAdmission(List *someQueue, Obj *obj){
 	}
 }
 
-void admitProcess(List *newQueue, List *readyQueue, int currentTime){
+void admitProcess(List *newQueue, List *readyQueue, long int currentTime){
 	Obj *obj;
 	obj = newQueue->first;
 	while(obj){
 		if(obj->process->admission == currentTime){
+			totalAdmittedProcess++;
 			newQueue->first = obj->next;
 			newQueue->first ? newQueue->first->prev = NULL : NULL;
 			obj->next = NULL;
@@ -330,7 +331,8 @@ void addToQueue(List *someQueue, Obj *obj){
 
 void execProcess(Processor *processor){
 	if(processor->executingProcess && !processor->currentCpuBurstOver){
-		printf("\nprocesso %d em execução tempo de CPU %d\n\n",processor->executingProcess->id, processor->executingProcess->cpuBursts->burstTime);
+		printf("\nprocesso %d tempo de CPU restante %d\n\n",processor->executingProcess->id, processor->executingProcess->cpuBursts->burstTime);
+		fflush(stdout);
 		if (processor->executingProcess->cpuBursts->burstTime <= 0){
 			processor->currentCpuBurstOver = ON;
 		} else {
@@ -374,6 +376,7 @@ void preemptionExec(Processor *processor, List *readyQueue){
 		processor->executingProcess = obj->process;
 		obj->process = processOut;
 		printf("Preempção: trocando processo %d por processo %d\n",processOut->id, processor->executingProcess->id);
+		fflush(stdout);
 		addOrderedByPriority(readyQueue,obj);
 	}
 }
@@ -406,6 +409,7 @@ void checkIOFinished(List *waitQueue,List *readyQueue){
 					addOrderedByPriority(readyQueue, obj);
 				} else {
 					printf("processo %d concluído\n", obj->process->id);
+					fflush(stdout);
 				}
 				obj = waitQueue->first;
 			} else if(obj->process->ioBursts->burstTime == 0){
@@ -421,6 +425,7 @@ void checkIOFinished(List *waitQueue,List *readyQueue){
 					addOrderedByPriority(readyQueue, obj);
 				} else {
 					printf("processo %d concluído\n", obj->process->id);
+					fflush(stdout);
 				}
 				obj = aux;
 			} else {
@@ -437,11 +442,13 @@ void displayQueueStatus(List *waitQueue, List *readyQueue){
 	printf("\nFila de Espera:");
 	while(waitObj != NULL){
 		printf(" Id:%d P:%d |",waitObj->process->id, waitObj->process->priority);
+		fflush(stdout);
 		waitObj = waitObj->next;
 	}
 	printf("\nFila de Prontos:");
 	while(readyObj != NULL){
 		printf(" Id:%d Prioridade:%d |",readyObj->process->id, readyObj->process->priority);
+		fflush(stdout);
 		readyObj = readyObj->next;
 	}
 	printf("\n");
