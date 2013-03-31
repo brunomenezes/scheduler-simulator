@@ -1,4 +1,5 @@
-c-approaches
+Scheduler Simulator
 ============
 
-C Approaches ? o.O
+#Rules to Follow on solution Development
+
